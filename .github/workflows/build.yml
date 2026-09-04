@@ -1,0 +1,92 @@
+name: Build iOS
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install xcodegen
+        run: brew install xcodegen
+        
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate
+          sed -i '' 's/objectVersion = 77;/objectVersion = 56;/' EasyWriting.xcodeproj/project.pbxproj
+          
+      - name: Build
+        run: |
+          xcodebuild -project EasyWriting.xcodeproj \
+            -scheme EasyWriting \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tail -30
+          
+      - name: Fix resource structure and Package IPA
+        run: |
+          APP_PATH=$(find build/Build/Products -name "*.app" -type d | head -1)
+          echo "App: $APP_PATH"
+          
+          # 创建 web 和 web/assets 目录
+          mkdir -p "$APP_PATH/web/assets"
+          
+          # 保留 TauriMock.js 在根目录（先移出来）
+          if [ -f "$APP_PATH/TauriMock.js" ]; then
+            cp "$APP_PATH/TauriMock.js" /tmp/TauriMock.js.bak
+          fi
+          
+          # 移动 index.html 到 web/
+          if [ -f "$APP_PATH/index.html" ]; then
+            mv "$APP_PATH/index.html" "$APP_PATH/web/index.html"
+          fi
+          
+          # 移动所有 JS/CSS 到 web/assets/（排除 TauriMock.js）
+          find "$APP_PATH" -maxdepth 1 -name "*.js" ! -name "TauriMock.js" -exec mv {} "$APP_PATH/web/assets/" \;
+          find "$APP_PATH" -maxdepth 1 -name "*.css" -exec mv {} "$APP_PATH/web/assets/" \;
+          
+          # 移动图片/字体/音频等资源到 web/assets/
+          find "$APP_PATH" -maxdepth 1 \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.svg" -o -name "*.ico" -o -name "*.webp" -o -name "*.ttf" -o -name "*.woff2" -o -name "*.mp3" \) -exec mv {} "$APP_PATH/web/assets/" \;
+          
+          # 移动 logo.png 到 web/ (index.html 引用 /logo.png)
+          if [ -f "$APP_PATH/web/assets/logo.png" ]; then
+            mv "$APP_PATH/web/assets/logo.png" "$APP_PATH/web/logo.png"
+          fi
+          
+          # 恢复 TauriMock.js 到根目录
+          if [ -f /tmp/TauriMock.js.bak ]; then
+            cp /tmp/TauriMock.js.bak "$APP_PATH/TauriMock.js"
+          fi
+          
+          # 修改 index.html 为相对路径（去掉开头的 /）
+          sed -i '' 's|href="/logo.png"|href="logo.png"|g' "$APP_PATH/web/index.html"
+          sed -i '' 's|src="/assets/|src="assets/|g' "$APP_PATH/web/index.html"
+          sed -i '' 's|href="/assets/|href="assets/|g' "$APP_PATH/web/index.html"
+          
+          echo "=== index.html (修改后) ==="
+          cat "$APP_PATH/web/index.html"
+          echo ""
+          echo "=== App 根目录 ==="
+          ls "$APP_PATH/" | grep -v "^web$"
+          echo ""
+          echo "=== web/ ==="
+          ls "$APP_PATH/web/"
+          
+          # 打包 IPA
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r EasyWriting-unsigned.ipa Payload
+          ls -lh EasyWriting-unsigned.ipa
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyWriting-unsigned
+          path: EasyWriting-unsigned.ipa
