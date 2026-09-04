@@ -1,0 +1,35 @@
+name: EasyWriting
+options:
+  bundleIdPrefix: com.easywriting
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  objectVersion: 56
+settings:
+  base:
+    MARKETING_VERSION: "1.0.5"
+    CURRENT_PROJECT_VERSION: "5"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    SWIFT_VERSION: "5.0"
+    ENABLE_BITCODE: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+    DEVELOPMENT_TEAM: ""
+    PROVISIONING_PROFILE_SPECIFIER: ""
+targets:
+  EasyWriting:
+    type: application
+    platform: iOS
+    sources:
+      - path: Beans
+    resources:
+      - path: Beans/Assets.xcassets
+      - path: Beans/web
+        type: folder
+      - path: Beans/TauriMock.js
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.easywriting.app
+        INFOPLIST_FILE: Beans/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
