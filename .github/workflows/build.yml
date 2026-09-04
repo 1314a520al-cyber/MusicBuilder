@@ -1,0 +1,48 @@
+name: Build iOS
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install xcodegen
+        run: brew install xcodegen
+        
+      - name: Generate Xcode project
+        run: |
+          xcodegen generate
+          # 修复项目格式兼容性
+          sed -i '' 's/objectVersion = 77;/objectVersion = 56;/' EasyWriting.xcodeproj/project.pbxproj
+          grep objectVersion EasyWriting.xcodeproj/project.pbxproj | head -1
+          
+      - name: Build
+        run: |
+          xcodebuild -project EasyWriting.xcodeproj \
+            -scheme EasyWriting \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tail -80
+          
+      - name: Package IPA
+        run: |
+          APP_PATH=$(find build/Build/Products -name "*.app" -type d | head -1)
+          echo "App: $APP_PATH"
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r EasyWriting-unsigned.ipa Payload
+          ls -lh EasyWriting-unsigned.ipa
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyWriting-unsigned
+          path: EasyWriting-unsigned.ipa
