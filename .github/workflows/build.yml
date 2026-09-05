@@ -1,0 +1,36 @@
+name: Build iOS App
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Fix objectVersion
+        run: |
+          if [ -f *.xcodeproj/project.pbxproj ]; then
+            sed -i '' 's/objectVersion = 77;/objectVersion = 56;/' *.xcodeproj/project.pbxproj
+          fi
+      - name: Build
+        run: |
+          set -o pipefail
+          SCHEME=$(xcodebuild -list -json 2>/dev/null | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['project']['schemes'][0])")
+          xcodebuild -project *.xcodeproj -scheme "$SCHEME" -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | tail -50
+      - name: Package IPA
+        run: |
+          APP_PATH=$(find build -name "*.app" -type d | head -1)
+          APP_NAME=$(basename "$APP_PATH" .app)
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r "${APP_NAME}-unsigned.ipa" Payload
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned-ipa
+          path: "*-unsigned.ipa"

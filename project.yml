@@ -1,0 +1,24 @@
+name: EasyWriting
+options:
+  bundleIdPrefix: com.easywriting
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    MARKETING_VERSION: "3.0.2"
+    CURRENT_PROJECT_VERSION: "3"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    INFOPLIST_FILE: Beans/Info.plist
+    SWIFT_VERSION: "5.0"
+targets:
+  EasyWriting:
+    type: application
+    platform: iOS
+    sources:
+      - path: Beans
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.easywriting.app
+        PRODUCT_NAME: EasyWriting
