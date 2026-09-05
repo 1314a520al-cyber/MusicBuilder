@@ -1,0 +1,39 @@
+name: EasyWriting
+options:
+  bundleIdPrefix: com.easywriting
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    MARKETING_VERSION: "2.0.7"
+    CURRENT_PROJECT_VERSION: "8"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    INFOPLIST_FILE: Beans/Info.plist
+    SWIFT_VERSION: "5.0"
+targets:
+  EasyWriting:
+    type: application
+    platform: iOS
+    sources:
+      - path: Beans
+        excludes:
+          - "web/**"
+    resources:
+      - path: Beans/TauriMock.js
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.easywriting.app
+        PRODUCT_NAME: EasyWriting
+    postCompileScripts:
+      - name: Copy Web Resources
+        script: |
+          SRC="${SRCROOT}/Beans/web"
+          DST="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/web"
+          echo "Copying web from $SRC to $DST"
+          rm -rf "$DST"
+          mkdir -p "$DST"
+          cp -R "$SRC/" "$DST/"
+          echo "Done. index.html size: $(wc -c < "$DST/index.html")"
