@@ -1,0 +1,222 @@
+import Foundation
+
+/// 版本更新记录
+struct UpdateEntry: Codable, Identifiable, Equatable {
+    let id: String
+    let version: String
+    let date: String
+    let features: [String]
+    let fixes: [String]
+    let deletions: [String]
+}
+
+final class UpdateStore: ObservableObject {
+    static let shared = UpdateStore()
+    @Published private(set) var entries: [UpdateEntry] = []
+    @Published var showUpdatePrompt = false
+    @Published private(set) var latestEntry: UpdateEntry?
+
+    private let key = "music_update_log_v1"
+    private let lastSeenKey = "music_last_seen_version"
+    
+    /// 内置更新日志（所有版本，供init合并和autoCheckVersion查询）
+    private static var builtInEntries: [UpdateEntry] {
+        return [
+                UpdateEntry(id: "v2.10.29", version: "2.10.29", date: "2026-09-06",
+                    features: ["快进/后退时间自由设置：播放页右上角三个点菜单中可设置5-300秒", "AI智能推荐页面修复"],
+                    fixes: ["修复seek回退：彻底重写为最基本seek逻辑，去掉isSeeking保护，时间观察者正常更新progress", "修复同步歌单上传401：改PUT方法，密码通过URL参数传递", "修复AI推荐点不开：sheet注入EnvironmentObject+修复nil崩溃"], deletions: []),
+                UpdateEntry(id: "v2.10.28", version: "2.10.28", date: "2026-09-06",
+                    features: ["AI智能推荐：相似歌曲/心情推荐/智能电台/重温经典，基于本地规则无需API", "同步歌单认证修复：添加Basic/Bearer/密码头多种认证方式"],
+                    fixes: ["修复同步歌单上传401错误（认证头格式修复）", "音游适配手机：顶栏歌曲信息防溢出+判定线位置调整", "评论区UI美化：头像阴影+行高优化+点赞按钮样式"], deletions: []),
+                UpdateEntry(id: "v2.10.27", version: "2.10.27", date: "2026-09-06",
+                    features: ["seek逻辑回退到v2.10.12稳定版实现"],
+                    fixes: ["修复快进/后退15秒后进度条和歌词回退（去掉暂停+重试，改回isSeeking布尔值+容差0 seek+3秒超时+时间观察者0.18秒差异过滤）", "修复点击歌词后歌词回退（同上）"], deletions: []),
+                UpdateEntry(id: "v2.10.26", version: "2.10.26", date: "2026-09-06",
+                    features: [],
+                    fixes: ["修复快进/后退15秒后进度回退（seek前暂停+完成后播放+重试3次+5秒保护期）", "修复点击歌词后歌词回退（同上）", "修复反馈邮件一直转圈（添加10秒超时，超时后报错）", "修复更新日志显示不完全（补全v2.10.23-26内置日志详细内容）"], deletions: []),
+                UpdateEntry(id: "v2.10.25", version: "2.10.25", date: "2026-09-06",
+                    features: ["SMTP客户端重写：TLS1.2最低版本+超时机制+失败回退系统邮件"],
+                    fixes: ["修复快进/后退15秒后进度回退（seek前暂停+完成后播放+重试3次+5秒保护期）", "修复点击歌词后歌词回退（同上）", "修复反馈邮件一直转圈（添加10秒超时）", "修复更新日志显示不完全（补全v2.10.23-25内置日志）"], deletions: ["反馈页面底部说明小字"]),
+                UpdateEntry(id: "v2.10.24", version: "2.10.24", date: "2026-09-06",
+                    features: ["seek逻辑彻底重写：去掉所有复杂保护机制，回到最基本实现"],
+                    fixes: ["修复点击歌词/快进后进度回退问题"], deletions: ["isSeeking/seekLockUntil/seekTarget等复杂seek保护机制"]),
+                UpdateEntry(id: "v2.10.23", version: "2.10.23", date: "2026-09-06",
+                    features: ["SMTP自动发送反馈邮件：SSL直连smtp.yeah.net:465，用授权码直接发送，不需要系统邮件账户"],
+                    fixes: ["反馈邮件发送不到的问题（从系统邮件改为SMTP直连）", "点击歌词后歌词从头显示", "快进15秒后回退到开头"], deletions: ["MFMailComposeViewController系统邮件方案"]),
+                UpdateEntry(id: "v2.10.22", version: "2.10.22", date: "2026-09-06",
+                    features: ["PlaybackClock强制更新方法：seek时绕过阈值过滤立即更新歌词时钟"],
+                    fixes: ["修复点击歌词后歌词从头开始显示（seek后强制更新clock.progress）", "修复快进15秒后回退到开头（loadCurrent添加seek保护+快进按钮高优先级手势）", "反馈功能统一发送到azedix@yeah.net"], deletions: []),
+                UpdateEntry(id: "v2.10.21", version: "2.10.21", date: "2026-09-06",
+                    features: ["显示进度与实际播放时间彻底分离（双变量架构）", "seek只改显示进度，UI/歌词/进度条立刻跳到目标位置", "实际播放时间由时间观察者独立更新，接近目标时才同步显示"],
+                    fixes: ["彻底修复点击歌词/±15秒/拖动进度条后进度回退问题（根因：显示进度和实际播放共用同一变量）", "seek后显示进度锁死为目标值，播放器实际在什么位置不影响显示", "只有实际播放到目标位置附近（差异<2秒）才开始同步显示进度"], deletions: []),
+                UpdateEntry(id: "v2.10.20", version: "2.10.20", date: "2026-09-06",
+                    features: ["更新日志修复：每次启动自动合并内置新版本日志", "更新日志修复：新版本不再只显示一句话，显示完整新增/修复/删除内容"],
+                    fixes: ["修复更新日志内容显示不全问题", "修复用户升级后新版本日志不加载问题（之前只在entries为空时加载内置数据）", "seek极端保护（继承v2.10.19）：5秒内时间观察者完全禁用，progress锁死不回退"], deletions: []),
+                UpdateEntry(id: "v2.10.19", version: "2.10.19", date: "2026-09-06",
+                    features: ["seek极端保护：5秒内时间观察者完全禁用（isSeeking+seekLockUntil双重锁）", "seek后progress锁死为目标值，任何代码不能修改", "只有seek成功且差异<1秒才提前解除保护", "5秒后强制解除，差异>3秒保持目标值不回退"],
+                    fixes: ["彻底修复点击歌词/±15秒/拖动进度条后进度回退问题", "去掉seek前暂停（回退根因）", "去掉轮询状态机，恢复AVPlayer原生seek"], deletions: []),
+                UpdateEntry(id: "v2.10.18", version: "2.10.18", date: "2026-09-06",
+                    features: [],
+                    fixes: ["seek彻底简化：去掉seek前暂停（回退根因）", "去掉轮询状态机，恢复AVPlayer原生seek completion handler", "保留isSeeking+差异>3秒不覆盖两层保护"], deletions: []),
+                UpdateEntry(id: "v2.10.17", version: "2.10.17", date: "2026-09-05",
+                    features: [],
+                    fixes: ["恢复时间观察者差异>3秒不覆盖逻辑", "超时后progress强制保持为targetSeekTime不被实际时间覆盖"], deletions: []),
+        ]
+    }
+
+    private init() {
+        load()
+        // 内置初始更新日志
+        // 每次启动都合并内置新日志（不只是空时加载）
+        let builtIn = Self.builtInEntries
+        // 合并：内置有但entries中没有的版本，添加进去
+        let existingVersions = Set(entries.map { $0.version })
+        for built in builtIn {
+            if !existingVersions.contains(built.version) {
+                entries.append(built)
+            }
+        }
+        // 按版本号降序排序
+        entries.sort { e1, e2 in
+            let p1 = e1.version.split(separator: ".").compactMap { Int($0) }
+            let p2 = e2.version.split(separator: ".").compactMap { Int($0) }
+            for i in 0..<max(p1.count, p2.count) {
+                let v1 = i < p1.count ? p1[i] : 0
+                let v2 = i < p2.count ? p2[i] : 0
+                if v1 != v2 { return v1 > v2 }
+            }
+            return false
+        }
+        save()
+        latestEntry = entries.first
+    }
+
+    /// 启动后调用（不在 init 中修改 @Published，避免 iOS17 崩溃）
+    func startupCheck() {
+        autoCheckVersion()
+        // 真正去 GitHub 检查是否有新版本
+        checkForUpdatesManually()
+    }
+
+    /// 自动检测当前 App 版本，若比记录新则自动添加更新日志
+    private func autoCheckVersion() {
+        guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else { return }
+        let hasVersion = entries.contains { $0.version == currentVersion }
+        guard !hasVersion else { return }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        // 自动添加的版本日志：检查是否有内置详细数据
+        let builtInDetails = Self.builtInEntries.first { $0.version == currentVersion }
+        let entry = UpdateEntry(
+            id: "v\(currentVersion)",
+            version: currentVersion,
+            date: fmt.string(from: Date()),
+            features: builtInDetails?.features ?? ["版本 \(currentVersion) 更新"],
+            fixes: builtInDetails?.fixes ?? ["性能优化与稳定性改进"],
+            deletions: builtInDetails?.deletions ?? []
+        )
+        entries.insert(entry, at: 0)
+        latestEntry = entries.first
+        save()
+    }
+
+    /// 手动检查更新：从 GitHub 获取最新 release，只在比当前版本新时弹窗
+    func checkForUpdatesManually(completion: ((Bool, String?) -> Void)? = nil) {
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        guard let url = URL(string: "https://api.github.com/repos/1314a520al-cyber/music/releases/latest") else {
+            completion?(false, "检查失败")
+            return
+        }
+        var req = URLRequest(url: url)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, error in
+            guard let self = self, let data = data, error == nil,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tag = json["tag_name"] as? String else {
+                DispatchQueue.main.async { completion?(false, "网络错误") }
+                return
+            }
+            let latestVersion = tag.replacingOccurrences(of: "v", with: "")
+            let isNewer = self.isVersion(latestVersion, greaterThan: currentVersion)
+            DispatchQueue.main.async {
+                if isNewer {
+                    // 构建更新条目
+                    let body = json["body"] as? String ?? ""
+                    let features = self.extractSection(body, prefix: "### 新增")
+                    let fixes = self.extractSection(body, prefix: "### 修复")
+                    let deletions = self.extractSection(body, prefix: "### 删除")
+                    let entry = UpdateEntry(id: tag, version: latestVersion, date: json["published_at"] as? String ?? "", features: features, fixes: fixes, deletions: deletions)
+                    self.latestEntry = entry
+                    self.showUpdatePrompt = true
+                    completion?(true, "发现新版本 \(latestVersion)")
+                } else {
+                    completion?(false, "已是最新版本（\(currentVersion)）")
+                }
+            }
+        }.resume()
+    }
+
+    private func isVersion(_ a: String, greaterThan b: String) -> Bool {
+        let partsA = a.split(separator: ".").compactMap { Int($0) }
+        let partsB = b.split(separator: ".").compactMap { Int($0) }
+        for i in 0..<max(partsA.count, partsB.count) {
+            let va = i < partsA.count ? partsA[i] : 0
+            let vb = i < partsB.count ? partsB[i] : 0
+            if va != vb { return va > vb }
+        }
+        return false
+    }
+
+    private func extractSection(_ body: String, prefix: String) -> [String] {
+        guard let range = body.range(of: prefix) else { return [] }
+        var section = String(body[range.upperBound...])
+        if let nextRange = section.range(of: "### ") {
+            section = String(section[..<nextRange.lowerBound])
+        }
+        return section.split(separator: Character("\n")).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("- ") { return String(trimmed.dropFirst(2)) }
+            return nil
+        }
+    }
+
+    /// 启动时检查本地更新日志（仅用于显示更新日志页面，不触发更新弹窗）
+    func checkForUpdates() {
+        // 更新弹窗只由 checkForUpdatesManually（GitHub 检查）触发
+        // 此方法仅用于本地日志记录对比
+    }
+
+    func markSeen() {
+        if let latest = entries.first {
+            UserDefaults.standard.set(latest.version, forKey: lastSeenKey)
+        }
+        showUpdatePrompt = false
+    }
+
+    /// 添加新版本更新记录（每次发版调用）
+    func addEntry(version: String, features: [String], fixes: [String], deletions: [String] = []) {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        let entry = UpdateEntry(id: "v\(version)", version: version, date: fmt.string(from: Date()), features: Array(NSOrderedSet(array: features).array as? [String] ?? features), fixes: Array(NSOrderedSet(array: fixes).array as? [String] ?? fixes), deletions: deletions)
+        if let idx = entries.firstIndex(where: { $0.version == version }) {
+            entries[idx] = entry
+        } else {
+            entries.insert(entry, at: 0)
+        }
+        latestEntry = entries.first
+        save()
+    }
+
+    private func save() {
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let arr = try? JSONDecoder().decode([UpdateEntry].self, from: data) else { return }
+        entries = arr
+        latestEntry = arr.first
+    }
+}
