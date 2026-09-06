@@ -1,0 +1,154 @@
+[
+  {
+    "bookSourceName": "顶点小说(xslcb)",
+    "bookSourceUrl": "https://www.xslcb.cc",
+    "bookSourceGroup": "无删减书源",
+    "bookSourceType": 0,
+    "bookSourceComment": "无删减小说源",
+    "lastUpdateTime": 0,
+    "enabled": true,
+    "enabledExplore": true,
+    "searchUrl": "/modules/article/search.php,{\"body\":\"searchkey={{key}}&searchtype=all&submit=\",\"method\":\"POST\",\"charset\":\"UTF-8\"}",
+    "ruleSearch": {
+      "bookList": ".bookbox",
+      "bookName": ".bookname a@text",
+      "bookUrl": ".bookname a@href",
+      "author": ".author@text##作者：",
+      "coverUrl": ".bookbox img@src",
+      "intro": ".uptime@text"
+    },
+    "ruleBookInfo": {
+      "name": "[property=\"og:novel:book_name\"]@content",
+      "author": "[property=\"og:novel:author\"]@content",
+      "coverUrl": "[property=\"og:image\"]@content",
+      "intro": "[property=\"og:description\"]@content",
+      "kind": "[property=\"og:novel:category\"]@content",
+      "lastChapter": "[property=\"og:novel:latest_chapter_name\"]@content",
+      "updateTime": "[property=\"og:novel:update_time\"]@content"
+    },
+    "ruleToc": {
+      "chapterList": "#list dd a",
+      "chapterName": "@text",
+      "chapterUrl": "@href"
+    },
+    "ruleContent": {
+      "content": "#content@text",
+      "nextContentUrl": ".bottem1 a:contains(下一页)@href",
+      "replaceRegex": "记住网址.*?\\n|手机用户.*?\\n|请记住本书首发域名.*?\\n|笔趣阁.*?\\n"
+    }
+  },
+  {
+    "bookSourceName": "海书小说(haishuxs)",
+    "bookSourceUrl": "https://m.haishuxs.com",
+    "bookSourceGroup": "无删减书源",
+    "bookSourceType": 0,
+    "bookSourceComment": "无删减小说源",
+    "lastUpdateTime": 0,
+    "enabled": true,
+    "enabledExplore": true,
+    "searchUrl": "/modules/article/search.php,{\"body\":\"searchkey={{key}}&searchtype=all&submit=\",\"method\":\"POST\",\"charset\":\"UTF-8\"}",
+    "ruleSearch": {
+      "bookList": ".bookbox",
+      "bookName": ".bookname a@text",
+      "bookUrl": ".bookname a@href",
+      "author": ".author@text##作者：",
+      "coverUrl": ".bookbox img@src",
+      "intro": ".uptime@text"
+    },
+    "ruleBookInfo": {
+      "name": "[property=\"og:novel:book_name\"]@content",
+      "author": "[property=\"og:novel:author\"]@content",
+      "coverUrl": "[property=\"og:image\"]@content",
+      "intro": "[property=\"og:description\"]@content",
+      "kind": "[property=\"og:novel:category\"]@content",
+      "lastChapter": "[property=\"og:novel:latest_chapter_name\"]@content",
+      "updateTime": "[property=\"og:novel:update_time\"]@content"
+    },
+    "ruleToc": {
+      "chapterList": "#list dd a",
+      "chapterName": "@text",
+      "chapterUrl": "@href"
+    },
+    "ruleContent": {
+      "content": "#content@text",
+      "nextContentUrl": ".bottem1 a:contains(下一页)@href",
+      "replaceRegex": "记住网址.*?\\n|手机用户.*?\\n|请记住本书首发域名.*?\\n|笔趣阁.*?\\n"
+    }
+  },
+  {
+    "bookSourceName": "1024小说(1024txt)",
+    "bookSourceUrl": "https://www.1024txt.com",
+    "bookSourceGroup": "无删减书源",
+    "bookSourceType": 0,
+    "bookSourceComment": "无删减小说源",
+    "lastUpdateTime": 0,
+    "enabled": true,
+    "enabledExplore": true,
+    "searchUrl": "/modules/article/search.php,{\"body\":\"searchkey={{key}}&searchtype=all&submit=\",\"method\":\"POST\",\"charset\":\"GBK\"}",
+    "ruleSearch": {
+      "bookList": ".bookbox",
+      "bookName": ".bookname a@text",
+      "bookUrl": ".bookname a@href",
+      "author": ".author@text##作者：",
+      "coverUrl": ".bookbox img@src",
+      "intro": ".uptime@text"
+    },
+    "ruleBookInfo": {
+      "name": "[property=\"og:novel:book_name\"]@content",
+      "author": "[property=\"og:novel:author\"]@content",
+      "coverUrl": "[property=\"og:image\"]@content",
+      "intro": "[property=\"og:description\"]@content",
+      "kind": "[property=\"og:novel:category\"]@content",
+      "lastChapter": "[property=\"og:novel:latest_chapter_name\"]@content",
+      "updateTime": "[property=\"og:novel:update_time\"]@content"
+    },
+    "ruleToc": {
+      "chapterList": "#list dd a",
+      "chapterName": "@text",
+      "chapterUrl": "@href"
+    },
+    "ruleContent": {
+      "content": "#content@text",
+      "nextContentUrl": ".bottem1 a:contains(下一页)@href",
+      "replaceRegex": "记住网址.*?\\n|手机用户.*?\\n|请记住本书首发域名.*?\\n|笔趣阁.*?\\n"
+    }
+  },
+  {
+    "bookSourceName": "顶点小说(icaups)",
+    "bookSourceUrl": "https://m.icaups.net",
+    "bookSourceGroup": "无删减书源",
+    "bookSourceType": 0,
+    "bookSourceComment": "无删减小说源",
+    "lastUpdateTime": 0,
+    "enabled": true,
+    "enabledExplore": true,
+    "searchUrl": "/modules/article/search.php,{\"body\":\"searchkey={{key}}&searchtype=all&submit=\",\"method\":\"POST\",\"charset\":\"UTF-8\"}",
+    "ruleSearch": {
+      "bookList": ".bookbox",
+      "bookName": ".bookname a@text",
+      "bookUrl": ".bookname a@href",
+      "author": ".author@text##作者：",
+      "coverUrl": ".bookbox img@src",
+      "intro": ".uptime@text"
+    },
+    "ruleBookInfo": {
+      "name": "[property=\"og:novel:book_name\"]@content",
+      "author": "[property=\"og:novel:author\"]@content",
+      "coverUrl": "[property=\"og:image\"]@content",
+      "intro": "[property=\"og:description\"]@content",
+      "kind": "[property=\"og:novel:category\"]@content",
+      "lastChapter": "[property=\"og:novel:latest_chapter_name\"]@content",
+      "updateTime": "[property=\"og:novel:update_time\"]@content"
+    },
+    "ruleToc": {
+      "chapterList": "#list dd a",
+      "chapterName": "@text",
+      "chapterUrl": "@href"
+    },
+    "ruleContent": {
+      "content": "#content@text",
+      "nextContentUrl": ".bottem1 a:contains(下一页)@href",
+      "replaceRegex": "记住网址.*?\\n|手机用户.*?\\n|请记住本书首发域名.*?\\n|笔趣阁.*?\\n"
+    }
+  }
+]
