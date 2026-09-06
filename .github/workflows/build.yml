@@ -1,0 +1,35 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen || true
+          xcodegen generate
+          
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild -project NovelReader.xcodeproj -scheme NovelReader -configuration Release -destination 'generic/platform=iOS' -archivePath build/NovelReader.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | tail -40
+          
+      - name: Export IPA
+        run: |
+          mkdir -p build/Payload
+          cp -r build/NovelReader.xcarchive/Products/Applications/NovelReader.app build/Payload/
+          cd build && zip -qr NovelReader.ipa Payload
+          ls -lh NovelReader.ipa
+          
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovelReader.ipa
+          path: build/NovelReader.ipa

@@ -1,0 +1,23 @@
+name: NovelReader
+options:
+  bundleIdPrefix: com.novel
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  NovelReader:
+    type: application
+    platform: iOS
+    sources: [Novel]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.novel.reader
+        MARKETING_VERSION: "2.0.1"
+        INFOPLIST_KEY_CFBundleDisplayName: "笔趣阁"
+        CURRENT_PROJECT_VERSION: "15"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: Novel/Info.plist
+        CODE_SIGN_STYLE: Automatic
