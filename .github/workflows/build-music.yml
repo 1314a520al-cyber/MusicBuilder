@@ -119,17 +119,44 @@ jobs:
           retention-days: 90
 
       - name: Publish Release to Music repo
-        uses: softprops/action-gh-release@v2
+        working-directory: music-source
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          repository: 1314a520al-cyber/music
-          tag_name: ${{ env.VERSION_TAG }}
-          name: Music ${{ env.VERSION_LABEL }}
-          body_path: music-source/release_body.md
-          files: |
-            music-source/Music-unsigned.ipa
-            music-source/Music-*.zip
-          update_release_body: true
-          update_release_name: true
-          update_release_assets: true
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          set -e
+          VER=$(cat version.txt)
+          TAG="v${VER}"
+          # 若 tag 已存在则删除（允许覆盖发布），再创建
+          EXISTING_ID=$(curl -sL -H "Authorization: token ${GH_PAT}" "https://api.github.com/repos/1314a520al-cyber/music/releases/tags/${TAG}" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || true)
+          if [ -n "$EXISTING_ID" ]; then
+            curl -sL -X DELETE -H "Authorization: token ${GH_PAT}" "https://api.github.com/repos/1314a520al-cyber/music/releases/${EXISTING_ID}"
+            echo "deleted existing release $EXISTING_ID"
+          fi
+          curl -sL -X DELETE -H "Authorization: token ${GH_PAT}" "https://api.github.com/repos/1314a520al-cyber/music/git/refs/tags/${TAG}" || true
+          # 创建 release
+          BODY=$(python3 -c "
+import json
+body = open('release_body.md', encoding='utf-8').read()
+print(json.dumps(body))
+")
+          RESP=$(curl -sL -X POST \
+            -H "Authorization: token ${GH_PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/1314a520al-cyber/music/releases" \
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"Music ${VER}\",\"body\":${BODY}}")
+          echo "$RESP"
+          REL_ID=$(echo "$RESP" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
+          echo "release id: $REL_ID"
+          echo "RELEASE_ID=$REL_ID" >> "$GITHUB_ENV"
+          # 上传 IPA
+          curl -sL -X POST \
+            -H "Authorization: token ${GH_PAT}" \
+            -H "Content-Type: application/zip" \
+            "https://uploads.github.com/repos/1314a520al-cyber/music/releases/${REL_ID}/assets?name=Music-${VER}.ipa" \
+            --data-binary @Music-unsigned.ipa | python3 -c "import json,sys; d=json.load(sys.stdin); print('IPA asset:', d.get('name'), d.get('size'))"
+          # 上传源码包
+          curl -sL -X POST \
+            -H "Authorization: token ${GH_PAT}" \
+            -H "Content-Type: application/zip" \
+            "https://uploads.github.com/repos/1314a520al-cyber/music/releases/${REL_ID}/assets?name=Music-${VER}-source.zip" \
+            --data-binary @"Music-${VER}-source.zip" | python3 -c "import json,sys; d=json.load(sys.stdin); print('source asset:', d.get('name'), d.get('size'))"
