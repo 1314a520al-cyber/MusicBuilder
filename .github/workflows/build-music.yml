@@ -1,0 +1,135 @@
+name: Build Music IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-music.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-music:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v4
+
+      - name: Checkout Music source (private)
+        uses: actions/checkout@v4
+        with:
+          repository: 1314a520al-cyber/music
+          token: ${{ secrets.GH_PAT }}
+          path: music-source
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Bump build number
+        id: bump
+        working-directory: music-source
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          path = 'project.yml'
+          with open(path) as f:
+              content = f.read()
+          def bump_build(m):
+              return 'CURRENT_PROJECT_VERSION: "' + str(int(m.group(1)) + 1) + '"'
+          content, n2 = re.subn(r'CURRENT_PROJECT_VERSION:\s*"(\d+)"', bump_build, content)
+          with open(path, 'w') as f:
+              f.write(content)
+          ver = re.search(r'MARKETING_VERSION:\s*"([^"]+)"', content).group(1)
+          build = re.search(r'CURRENT_PROJECT_VERSION:\s*"(\d+)"', content).group(1)
+          print('::notice title=Version::Building %s (build %s)' % (ver, build))
+          with open('version.txt', 'w') as f:
+              f.write(ver)
+          with open('build.txt', 'w') as f:
+              f.write(build)
+          PYEOF
+
+      - name: Generate Xcode project
+        working-directory: music-source
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: music-source
+        run: |
+          VER=$(cat version.txt)
+          BUILD=$(cat build.txt)
+          echo "Building with MARKETING_VERSION=$VER CURRENT_PROJECT_VERSION=$BUILD"
+          echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
+          echo "VERSION_LABEL=$VER" >> "$GITHUB_ENV"
+          echo "VERSION_TAG=v$VER" >> "$GITHUB_ENV"
+          xcodebuild \
+            -project Music.xcodeproj \
+            -scheme Music \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            MARKETING_VERSION="$VER" \
+            CURRENT_PROJECT_VERSION="$BUILD" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Verify version in built app
+        working-directory: music-source
+        run: |
+          plutil -p build/Build/Products/Release-iphoneos/Music.app/Info.plist | grep -E "CFBundleShortVersionString|CFBundleVersion"
+
+      - name: Package IPA
+        working-directory: music-source
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Music.app Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload Music-unsigned.ipa
+          ls -lh Music-unsigned.ipa
+
+      - name: Package source zip
+        working-directory: music-source
+        run: |
+          VER=$(cat version.txt)
+          zip -qr "Music-${VER}-source.zip" Beans Widget android project.yml CHANGELOG.md README.md VERSIONING.md FEATURES.md docs 2>/dev/null || true
+          ls -lh "Music-${VER}-source.zip"
+
+      - name: Build release notes from CHANGELOG
+        working-directory: music-source
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          ver = open('version.txt').read().strip()
+          content = open('CHANGELOG.md', encoding='utf-8').read()
+          m = re.search(r'^##\s+' + re.escape(ver) + r'\s*$([\s\S]*?)(?=^##\s|\Z)', content, re.M)
+          body = m.group(1).strip() if m else ('版本 ' + ver + ' 的更新内容。')
+          body = '# Music ' + ver + '\n\n' + body + '\n'
+          with open('release_body.md', 'w', encoding='utf-8') as f:
+              f.write(body)
+          print(body)
+          PYEOF
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Music-unsigned-ipa
+          path: music-source/Music-unsigned.ipa
+          retention-days: 90
+
+      - name: Publish Release to Music repo
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        with:
+          repository: 1314a520al-cyber/music
+          tag_name: ${{ env.VERSION_TAG }}
+          name: Music ${{ env.VERSION_LABEL }}
+          body_path: music-source/release_body.md
+          files: |
+            music-source/Music-unsigned.ipa
+            music-source/Music-*.zip
+          update_release_body: true
+          update_release_name: true
+          update_release_assets: true
