@@ -134,11 +134,7 @@ jobs:
           fi
           curl -sL -X DELETE -H "Authorization: token ${GH_PAT}" "https://api.github.com/repos/1314a520al-cyber/music/git/refs/tags/${TAG}" || true
           # 创建 release
-          BODY=$(python3 -c "
-import json
-body = open('release_body.md', encoding='utf-8').read()
-print(json.dumps(body))
-")
+          BODY=$(python3 -c "import json; print(json.dumps(open('release_body.md', encoding='utf-8').read()))")
           RESP=$(curl -sL -X POST \
             -H "Authorization: token ${GH_PAT}" \
             -H "Accept: application/vnd.github+json" \
